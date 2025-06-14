@@ -6,17 +6,17 @@
 */
 const fs = require("fs");
 
-global.BOT_TOKEN = "7437332589:AAGQCXC41R3QYRdRXvOG1naRQ2svz6xJ84s" // create a bot here https://t.me/Botfather and get bot tokens
-global.BOT_NAME = "FiiBotz" //your bot name
-global.OWNER_NAME = "AlfiXD" //your name
-global.OWNER_NUMBER = "62895615063060" //your telegram number
-global.OWNER = ["https://t.me/RafaMods", "https://t.me/alfisyahrial"] // create a bot here https://t.me/Botfather and get bot tokens
+global.BOT_TOKEN = "-" // create a bot here https://t.me/Botfather and get bot tokens
+global.BOT_NAME = "-" //your bot name
+global.OWNER_NAME = "-" //your name
+global.OWNER_NUMBER = "-" //your telegram number
+global.OWNER = ["-"] // link owner
 const {
    indonesia
 } = require("./lib");
 global.language = indonesia
 global.lang = language
-global.adminId = "7437332589"
+global.adminId = "-" // cek your id here https://t.me/cekTeleID_bot
 global.pp = 'https://files.catbox.moe/tttkp9.jpg',
     //SERVER 1
   global.domain = '', // Fill in the domain used
