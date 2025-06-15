@@ -9,7 +9,6 @@ Node js Telegram Bots Using Library Telegraf
 | **AI MENU** |[✔️] |
 | **DOWNLOAD MENU** |[✔️] |
 | **IMAGE MENU** |[✔️] |
-| **DDOS MENU** |[✔️] |
 | **CPANEL MENU** |[✔️] |
 
 </details>
