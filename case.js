@@ -311,7 +311,7 @@ Jika ada error, silakan lapor ke owner ya!
 - /tiktok <url> — Unduh media dari TikTok
 - /instagram <url> — Unduh media dari Instagram
 - /facebook <url> — Unduh video dari Facebook
-- /twitter <url> — Unduh video dari Facebook
+- /twitter <url> — Unduh video dari Twitter
 
 🔍 *Pencarian*
 - /pinterest <kata kunci> — Cari gambar dari Pinterest
