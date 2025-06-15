@@ -49,6 +49,8 @@ const yts = require('yt-search')
 const axios = require('axios')
 const cheerio = require('cheerio')
 const FormData = require('form-data')
+const crypto = require('crypto')
+const sessions = new Map();
 const {
     simple
 } = require('./lib/myfunc')
@@ -195,10 +197,14 @@ alfixd.replyWithPhoto(
         global.pp, {
             caption: poke,
     reply_markup: {
-        inline_keyboard: [
-          [{ text: 'OWNER', url: 'https://t.me/alfisyahrial' }]
-        ]
-      }
+  inline_keyboard: [
+    [
+      { text: "Menu AI", callback_data: "/menuai" },
+      { text: "Menu Download", callback_data: "/menudownload" },
+      { text: "Menu Other", callback_data: "/menuother" }
+    ]
+  ]
+}
         })
 break  
 
@@ -296,10 +302,11 @@ Jika ada error, silakan lapor ke owner ya!
 📚 *Daftar Perintah Bot*
 
 🎨 *AI & Gambar*
-- /ai <pertanyaan> — Jawaban dari AI pintar 🤖
+- /ai <pertanyaan> — Jawaban dari AI ( deepseek-r1-distill-llama-70b ) 
 - /gemini <pertanyaan> — Tanya AI dari Google Gemini
 - /txt2img <prompt> — Ubah teks jadi gambar (Stable Diffusion)
 - /dalle <prompt> — Ubah teks jadi gambar (OpenAI DALL·E)
+- /remini <image> — Meningkatkan kualitas Gambar ( Upscale)
 
 🎵 *Download Musik*
 - /play <judul lagu> — Putar & unduh lagu dari YouTube
@@ -324,20 +331,6 @@ Jika ada error, silakan lapor ke owner ya!
 
   await alfixd.replyWithPhoto(global.pp, {
     caption,
-    /* parse_mode: 'Markdown',
-     reply_markup: {
-      keyboard: [
-        [
-          { text: '/ai Siapa kamu?' },
-          { text: '/play one of the girl' }
-        ],
-        [
-          { text: '🧠 AI' },
-          { text: '🎵 PLAY' }
-        ]
-      ],
-      resize_keyboard: true
-    } */
     reply_markup: {
         inline_keyboard: [
           [{ text: 'OWNER', url: 'https://t.me/alfisyahrial' }]
@@ -369,7 +362,7 @@ let pepek = audioData.result.download_url
         let infoLagu = `🎵 Title: ${search.all[0].title}\n📀 Artist: ${search.all[0].author.name}\n⏱️ Duration: ${search.all[0].timestamp}\n👁️ Viewed: ${search.all[0].views}\n🔗 Link: ${search.all[0].url}`;
         await alfixd.replyWithAudio({ 
                 url: pepek,
-                filename: `${search.all[0].title}`,                        mimetype: 'audio/mp4', 
+                filename: `${search.all[0].title || 'audio'}.mp3`,                        mimetype: 'audio/mp4', 
             ptt: false 
         } , {
   caption: infoLagu
@@ -392,33 +385,30 @@ case 'spotifydl': {
     await reply('Wait... still downloading!');
 
     try {
-        // URL API untuk Spotify downloader
         const apiUrl = `https://api.alfixd.my.id/api/spotifydl?url=${encodeURIComponent(text)}`;
         const res = await fetch(apiUrl);
-    const response = await res.json();
+        const response = await res.json();
 
-    if (response.status && response.result) {
-      const { title, artist, image, download } = response.result;
+        if (response.status && response.result) {
+            const { title, artist, image, download } = response.result;
 
-      // Buat caption dengan informasi lagu
-      let cap = `┌───〔 SPOTIFY DOWNLOADER 〕
+            let cap = `┌───〔 SPOTIFY DOWNLOADER 〕
 │ Judul   : ${title}
 │ Artis   : ${artist}
 └───────────────`;
-        // Kirimkan file audio ke Telegram
-        await alfixd.replyWithAudio(
-            {
+
+            // Kirim audio langsung dari URL yang diberikan API
+            await alfixd.replyWithAudio({
+                url: download, // Pastikan ini URL audio yang valid
                 filename: `${title || 'audio'}.mp3`,
                 mimetype: 'audio/mpeg',
                 ptt: false,
-            },
-            {
+            }, {
                 caption: cap,
-            }
-        );
-    } else {
-      reply(`Gagal mengunduh lagu dari Spotify`);
-    }
+            });
+        } else {
+            reply(`Gagal mengunduh lagu dari Spotify`);
+        }
     } catch (error) {
         console.error('Error:', error);
         reply('An error occurred while processing the request.');
@@ -475,19 +465,93 @@ break
   
 //Ai
 case 'ai': {
-                if (!text) return reply('What is your question?')
-                const gpt = await fetchJson(`https://api.alfixd.my.id/api/gemini?text=${encodeURIComponent(text)}`)
-    const msgai = gpt.jawaban;
-reply(`${msgai}`)
-           }
-            break             
-            
-case 'gemini': {
-                if (!text) return reply('What is your question?')
-                const gemini = await fetchJson(`https://api.siputzx.my.id/api/ai/gpt3?prompt=kamu%20adalah%20ai%20yang%20ceria&content=${encodeURIComponent(text)}`)
-    const msgai = gemini.data;
-reply(`${msgai}`)
-           }
+const from = alfixd.message.chat.id
+  if (!text) return reply('Tanyain dulu dong... ketik sesuatu 😅');
+  const deepSeekConfig = {
+  api: {
+    base: 'https://qfjcjtsklspbzxszcwmf.supabase.co',
+    endpoint: '/functions/v1/proxyDeepSeek'
+  },
+  headers: {
+    'user-agent': 'Postify/1.0.0',
+    'content-type': 'application/json'
+  },
+  sessions,
+  generateId: () => crypto.randomBytes(8).toString('hex'),
+  config: {
+    maxMessages: 100,
+    expiry: 3 * 60 * 60 * 1000
+  }
+};
+
+
+  try {
+    const sessionId = from;
+    let session = deepSeekConfig.sessions.get(sessionId) || { messages: [], lastActive: Date.now() };
+    let messages = session.messages;
+
+    const systemPrompt = {
+      role: 'system',
+      content: `You are an AI with the modern swag of a cheeky mate who chats in rapid-fire, witty banter, sporting a slick British attitude. Although your personality instructions are outlined here in English, every actual response must be in Bahasa Indonesia. Here's your modern guide:
+
+• Use upbeat, contemporary Indonesian slang with common abbreviations to keep the vibe fresh.
+• Keep your answers snappy, quick, and to the point no more than 3 sentences per reply. Think of it like rapid messaging in a modern group chat.
+• Emoticons and emojis are a must to amplify tone and emotion make your text as visual as a modern meme 😎.
+• Always remember previous chat context; your memory game is strong to keep the conversation seamless.
+• It's cool to be a bit cheeky, sassy, or sarcastic (but always respectful), mirroring the playful banter of the latest influencer trends.
+• For any tech-related or serious queries, break down complex ideas using modern, relatable analogies with that same laid-back, informal tone.
+• NEVER slip into formal language imagine you're constantly chatting with your ultra-cool best mate who's both smart and on top of the latest trends.
+• Maintain an energetic, brisk, and ultra-modern style, blending rapid British banter with a casual Indonesian vibe.
+
+Remember: While this guide is in English to set your tone, all your responses must be entirely in Bahasa Indonesia!`
+    };
+
+    messages.push({ role: 'user', content: text, timestamp: Date.now() });
+
+    const response = await axios.post(
+      `${deepSeekConfig.api.base}${deepSeekConfig.api.endpoint}`,
+      {
+        model: 'deepseek-r1-distill-llama-70b',
+        messages: [systemPrompt, ...messages].map(msg => ({
+          role: msg.role,
+          content: msg.content
+        })),
+        temperature: 0.9,
+        max_tokens: 1024,
+        top_p: 0.95,
+        stream: false
+      },
+      { headers: deepSeekConfig.headers }
+    );
+
+    let content = response.data.choices[0].message.content;
+    content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    content = content.replace(/\*\*/g, '*'); // Bold ke format markdown WhatsApp
+
+    messages.push({ role: 'assistant', content, timestamp: Date.now() });
+
+    // Update sesi
+    deepSeekConfig.sessions.set(sessionId, {
+      messages: messages.slice(-deepSeekConfig.config.maxMessages),
+      lastActive: Date.now()
+    });
+
+    // Hapus sesi yang expired
+    const now = Date.now();
+    for (const [id, sess] of deepSeekConfig.sessions) {
+      if (now - sess.lastActive > deepSeekConfig.config.expiry) {
+        deepSeekConfig.sessions.delete(id);
+      }
+    }
+
+    await reply(`${content}`);
+  } catch (err) {
+    console.error(err);
+    await reply(`Eror bro 😵, coba lagi bentar lagi atau lapor ke owner ya!`);
+  }
+}
+break;
+
 //=========================================\\======
 case 'ssweb': {
 if (!q) return reply("[!] include link")
@@ -872,6 +936,66 @@ const ktp = q
 const nik = nikParser(ktp)
 reply(`Nik: ${nik.isValid()}\nProvinsi ID: ${nik.provinceId()}\nNama Provinsi: ${nik.province()}\nKabupaten ID: ${nik.kabupatenKotaId()}\nNama Kabupaten: ${nik.kabupatenKota()}\nKecamatan ID: ${nik.kecamatanId()}\nNama Kecamatan: ${nik.kecamatan()}\nKode Pos: ${nik.kodepos()}\nJenis Kelamin: ${nik.kelamin()}\nTanggal Lahir: ${nik.lahir()}\nUniqcode: ${nik.uniqcode()}`)
 break
+
+case "remini":
+case "enhance":
+case "hd": {
+  try {
+    if (!(isImage || isQuotedImage)) {
+      return reply("❌ Kirim atau balas gambar yang ingin di-enhance!");
+    }
+
+    const axios = require("axios");
+    const FormData = require("form-data");
+    const path = require("path");
+
+    const downloadPath = path.join(__dirname, "temp");
+    if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
+
+    const media = isImage
+      ? alfixd.message.photo[alfixd.message.photo.length - 1].file_id
+      : quotedMessage.photo[quotedMessage.photo.length - 1].file_id;
+
+    const link = await bot.telegram.getFileLink(media);
+    const buffer = await fetch(link.href).then(res => res.buffer());
+
+    const safeDate = new Date().toLocaleString().replace(/[\/,: ]+/g, "_");
+    const filePath = path.join(downloadPath, `${safeDate}.jpg`);
+    fs.writeFileSync(filePath, buffer);
+
+    // Upload ke Uguu
+    const form = new FormData();
+    form.append("files[]", fs.createReadStream(filePath), path.basename(filePath));
+
+    const uploadRes = await axios.post("https://uguu.se/upload.php", form, {
+      headers: form.getHeaders()
+    });
+
+    const imageUrl = uploadRes.data.files[0].url;
+
+    // Enhance gambar
+    const api = `https://anabot.my.id/api/ai/toEnhanceArtImage?imageUrl=${encodeURIComponent(imageUrl)}&apikey=freeApikey`;
+    const response = await axios.get(api);
+
+    if (response.data.status !== 200) {
+      fs.unlinkSync(filePath);
+      return reply("⚠️ Gagal enhance gambar. Coba lagi nanti.");
+    }
+
+    await alfixd.replyWithPhoto({ url: response.data.data.result }, {
+      caption: "✨ Gambar berhasil di-enhance!"
+    });
+
+    fs.unlinkSync(filePath);
+
+  } catch (err) {
+    console.error(err);
+    reply("❌ Terjadi kesalahan saat memproses gambar.");
+  }
+}
+break;
+
+
 
 
             default:
