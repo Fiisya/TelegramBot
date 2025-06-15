@@ -164,7 +164,7 @@ case 'runtime':{
     }
   break  
 
-case 'menu': case 'back!': case 'start':
+case 'menulist':
 const totalMem = os.totalmem();
 const freeMem = os.freemem();
 const usedMem = totalMem - freeMem;
@@ -211,6 +211,7 @@ let wkwkw = `▧ Download Menu
 │ • ${prefix}pinterest 
 │ • ${prefix}youtube
 │ • ${prefix}spotifydl
+│ • ${prefix}twitter
 └───···`
 alfixd.replyWithPhoto(
         global.pp, {
@@ -266,6 +267,88 @@ alfixd.replyWithPhoto(
         })
 }
 break
+
+case 'menu':
+case 'start':
+case 'back!': {
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+  const formattedUsedMem = formatSize(usedMem);
+  const formattedTotalMem = formatSize(totalMem);
+  const runtimeStr = runtime(process.uptime());
+  const now = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+
+  const caption = `
+Hi *${pushname}* 👋
+Saya adalah asisten bot yang dibuat oleh *AlfiXD*.  
+Jika ada error, silakan lapor ke owner ya!
+
+🤖 *Bot Info*
+• *Bot:* ${BOT_NAME}
+• *Owner:* ${OWNER_NAME}
+• *RAM:* ${formattedUsedMem} / ${formattedTotalMem}
+• *Uptime:* ${runtimeStr}
+• *Tanggal:* ${now}
+  `;
+
+  const menuList = `
+📚 *Daftar Perintah Bot*
+
+🎨 *AI & Gambar*
+- /ai <pertanyaan> — Jawaban dari AI pintar 🤖
+- /gemini <pertanyaan> — Tanya AI dari Google Gemini
+- /txt2img <prompt> — Ubah teks jadi gambar (Stable Diffusion)
+- /dalle <prompt> — Ubah teks jadi gambar (OpenAI DALL·E)
+
+🎵 *Download Musik*
+- /play <judul lagu> — Putar & unduh lagu dari YouTube
+- /yta <url> — Unduh audio dari YouTube
+- /spotifydl <url> — Unduh lagu dari Spotify
+
+🎥 *Download Video*
+- /ytv <url> — Unduh video dari YouTube
+- /tiktok <url> — Unduh media dari TikTok
+- /instagram <url> — Unduh media dari Instagram
+- /facebook <url> — Unduh video dari Facebook
+- /twitter <url> — Unduh video dari Facebook
+
+🔍 *Pencarian*
+- /pinterest <kata kunci> — Cari gambar dari Pinterest
+- /lirik <kata kunci> — Cari lirik Lagu
+
+⚒️ *Tools*
+- /nikparser <nik> — Cek informasi NIK
+- /ssweb <url> — Screenshot halaman web
+`;
+
+  await alfixd.replyWithPhoto(global.pp, {
+    caption,
+    /* parse_mode: 'Markdown',
+     reply_markup: {
+      keyboard: [
+        [
+          { text: '/ai Siapa kamu?' },
+          { text: '/play one of the girl' }
+        ],
+        [
+          { text: '🧠 AI' },
+          { text: '🎵 PLAY' }
+        ]
+      ],
+      resize_keyboard: true
+    } */
+    reply_markup: {
+        inline_keyboard: [
+          [{ text: 'OWNER', url: 'https://t.me/alfisyahrial' }]
+        ]
+      }
+  });
+
+  await alfixd.replyWithMarkdown(menuList);
+}
+break;
+
 
 case 'play': {
 if (!text) return reply('What Song Are You Looking For?')
